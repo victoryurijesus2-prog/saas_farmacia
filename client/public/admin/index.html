@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Administrativo — Natal Farma V7</title>
+<meta name="theme-color" content="#E11D2E">
+<link rel="icon" href="../icons/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="login" class="login">
+  <form class="login-card" id="loginForm" onsubmit="return false">
+    <div class="logo"><img src="../assets/logo-natal-farma.png" alt=""><div><b>Natal Farma</b><small>SISTEMA V7</small></div></div>
+    <h1>Painel administrativo</h1>
+    <p>Um único login para toda a equipe: administrador, funcionário e cliente são identificados automaticamente.</p>
+    <label>E-mail<input id="email" type="email" autocomplete="username" required placeholder="voce@email.com"></label>
+    <label>Senha<input id="password" type="password" autocomplete="current-password" required></label>
+    <p class="auth-error" id="loginError"></p>
+    <button id="loginSubmit">Entrar</button>
+    <div class="demo-creds"><b>Acesso da equipe</b>Use o e-mail e a senha cadastrados no Supabase para esta farmácia.</div>
+    <small class="demo">O sistema identifica automaticamente administrador, funcionário ou cliente.</small>
+  </form>
+</div>
+
+<div id="app" class="app hidden">
+  <aside>
+    <div class="logo"><img src="../assets/logo-natal-farma.png" alt=""><div><b>Natal Farma</b><small>GESTÃO V7</small></div></div>
+    <nav>
+      <button data-view="dashboard" data-ico="🏠" class="active">Dashboard</button>
+      <button data-view="orders" data-ico="📦">Pedidos</button>
+      <button data-view="products" data-ico="🏷️">Produtos / estoque</button>
+      <button data-view="customers" data-ico="👥">Clientes / CRM</button>
+      <button data-view="promotions" data-ico="🎟️">Cupons</button>
+      <button data-view="delivery" data-ico="🛵">Entregas</button>
+      <button data-view="reports" data-ico="📊">Relatórios</button>
+      <button data-view="banner" data-ico="🖼️">Banners</button>
+      <button data-view="settings" data-ico="⚙️">Configurações</button>
+    </nav>
+    <a href="../index.html">← Abrir loja</a>
+    <button id="logout">Sair</button>
+  </aside>
+
+  <main>
+    <header><div><small>Painel administrativo</small><h1 id="pageTitle">Dashboard</h1></div><span class="online">● Sistema ativo</span></header>
+
+    <!-- DASHBOARD -->
+    <section id="dashboardView" class="view">
+      <div class="stats">
+        <article><span>Pedidos hoje</span><strong id="dashOrdersToday">0</strong><small>registrados hoje</small></article>
+        <article><span>Faturamento</span><strong id="dashRevenue">R$ 0,00</strong><small>pedidos concluídos</small></article>
+        <article><span>Ticket médio</span><strong id="dashTicket">R$ 0,00</strong><small>vendas concluídas</small></article>
+        <article><span>Pendentes</span><strong id="dashPending">0</strong><small>aguardando atendimento</small></article>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel"><div class="panel-title"><div><span>OPERACIONAL</span><h2>Vendas dos últimos 7 dias</h2></div></div><div class="chart" id="salesChart"></div></div>
+        <div class="panel"><div class="panel-title"><div><span>INSIGHTS</span><h2>Ações recomendadas</h2></div></div><div id="insightsList" class="insights"></div></div>
+      </div>
+      <div class="stats mini">
+        <div><b id="dashCustomers">0</b><span>clientes</span></div>
+        <div><b id="dashProductsSold">0</b><span>itens vendidos</span></div>
+        <div class="clickable-stat" id="openLowStock"><b id="dashLowStock">0</b><span>estoque baixo</span><small>Ver produtos →</small></div>
+        <div><b id="dashExpiring">0</b><span>validade ≤ 90 dias</span></div>
+      </div>
+      <div class="panel low-stock-panel">
+        <div class="panel-title"><div><span>ALERTA DE REPOSIÇÃO</span><h2>Produtos com estoque baixo</h2><p>Lista automática dos itens que chegaram ou passaram do estoque mínimo.</p></div><button id="viewAllLowStock" class="btn outline">Ver todos no estoque</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque atual</th><th>Mínimo</th><th>Situação</th><th></th></tr></thead><tbody id="lowStockRows"></tbody></table></div>
+        <div id="lowStockSummary" class="stock-summary"></div>
+      </div>
+      <div class="panel"><div class="panel-title"><div><span>ÚLTIMOS PEDIDOS</span><h2>Atividade recente</h2></div><button class="btn outline" data-go="orders">Ver todos</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Total</th><th>Pagamento</th><th>Status</th></tr></thead><tbody id="recentOrders"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- PEDIDOS -->
+    <section id="ordersView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>VENDAS</span><h2>Pedidos</h2></div>
+          <div class="filters"><input id="orderSearch" placeholder="Buscar cliente, telefone ou pedido"><select id="orderFilter"><option value="all">Todos os status</option><option>Pedido recebido</option><option>Aguardando pagamento</option><option>Pagamento confirmado</option><option>Em separação</option><option>Pronto</option><option>Saiu para entrega</option><option>Concluído</option><option>Cancelado</option></select></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Entrega</th><th>Total</th><th>Pagamento</th><th>Status</th><th></th></tr></thead><tbody id="orderRows"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- PRODUTOS -->
+    <section id="productsView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>CATÁLOGO / ESTOQUE</span><h2>Produtos</h2><p>Preço, custo, margem, promoção, estoque mínimo e validade.</p></div><button id="newProduct" class="btn primary">+ Novo produto</button></div>
+        <div class="product-toolbar"><input id="productSearch" placeholder="Buscar produto, marca ou categoria"><select id="stockFilter"><option value="all">Todos os estoques</option><option value="low">Estoque baixo</option><option value="out">Sem estoque</option><option value="normal">Estoque normal</option></select><span id="productCount" class="product-count"></span></div>
+        <div class="table-wrap"><table><thead><tr><th>Foto</th><th>Produto</th><th>Venda</th><th>Promo</th><th>Margem</th><th>Estoque</th><th>Validade</th><th>Status</th><th></th></tr></thead><tbody id="productRows"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- CLIENTES -->
+    <section id="customersView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>CRM</span><h2>Clientes</h2><p>Histórico, ticket médio, gasto, frequência e pontos do programa de fidelidade.</p></div><input class="product-toolbar" id="customerSearch" placeholder="Buscar cliente ou telefone"></div>
+        <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Pedidos</th><th>Total gasto</th><th>Ticket médio</th><th>Pontos</th><th>Última compra</th><th>Perfil</th></tr></thead><tbody id="customerRows"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- CUPONS -->
+    <section id="promotionsView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>MARKETING</span><h2>Cupons e promoções</h2><p>Cupom ativo aparece automaticamente na Home com contagem regressiva real.</p></div><button id="newCoupon" class="btn primary">+ Novo cupom</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Código</th><th>Desconto</th><th>Compra mínima</th><th>Validade</th><th>Usos</th><th>Status</th><th></th></tr></thead><tbody id="couponRows"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- ENTREGAS -->
+    <section id="deliveryView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>LOGÍSTICA</span><h2>Regiões de entrega</h2></div><button id="newZone" class="btn primary">+ Nova região</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Região</th><th>Taxa</th><th>Status</th><th></th></tr></thead><tbody id="zoneRows"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- RELATÓRIOS -->
+    <section id="reportsView" class="view hidden">
+      <div class="stats">
+        <article><span>Receita concluída</span><strong id="reportRevenue">R$ 0,00</strong></article>
+        <article><span>Custo estimado</span><strong id="reportCost">R$ 0,00</strong></article>
+        <article><span>Lucro bruto</span><strong id="reportProfit">R$ 0,00</strong></article>
+        <article><span>Margem bruta</span><strong id="reportMargin">0%</strong></article>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel"><div class="panel-title"><div><span>RANKING</span><h2>Produtos mais vendidos</h2><p>Baseado nos pedidos concluídos — cancelados não contam.</p></div><select id="rankingPeriod" class="filters"><option value="all">Geral</option><option value="7">7 dias</option><option value="30">30 dias</option></select></div><div id="rankingList" class="ranking-list"></div></div>
+        <div class="panel"><div class="panel-title"><div><span>PAGAMENTOS</span><h2>Por forma de pagamento</h2></div></div><div id="paymentReport" class="ranking-list"></div></div>
+      </div>
+    </section>
+
+    <!-- BANNERS -->
+    <section id="bannerView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>PERSONALIZAÇÃO</span><h2>Banners da Home</h2><p>Vários banners viram um carrossel elegante no site. Agendamento com data/hora de início e fim.</p></div><button id="newBanner" class="btn primary">+ Novo banner</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Banner</th><th>Período</th><th>Status</th><th></th></tr></thead><tbody id="bannerRows"></tbody></table></div>
+      </div>
+      <div class="panel banner-editor hidden" id="bannerEditor">
+        <div class="panel-title"><div><span>EDIÇÃO</span><h2 id="bannerFormTitle">Novo banner</h2></div><button id="closeBannerEditor" class="btn outline">Fechar</button></div>
+        <div class="banner-grid">
+          <form id="bannerForm" onsubmit="return false">
+            <input type="hidden" id="bId">
+            <div class="two-cols"><label>Título<input id="bTitle" maxlength="90"></label><label>Tom do fundo<select id="bTone"><option value="brand">Vermelho (marca)</option><option value="teal">Verde-azulado</option></select></label></div>
+            <label>Subtítulo<textarea id="bSubtitle" maxlength="180"></textarea></label>
+            <div class="two-cols"><label>Texto do botão<input id="bButton" maxlength="40"></label><label>Link do botão<input id="bLink" maxlength="120" placeholder="#produtos ou URL"></label></div>
+            <div class="two-cols"><label>Início<input id="bStarts" type="datetime-local"></label><label>Fim<input id="bEnds" type="datetime-local"></label></div>
+            <label>Imagem (opcional)<input id="bImage" type="file" accept="image/*"></label>
+            <img id="bImagePreview" class="product-preview hidden">
+            <label class="switchline"><input id="bActive" type="checkbox" checked> Banner ativo</label>
+            <div class="actions"><button class="primary" id="saveBanner">Salvar banner</button><button class="secondary" id="clearBanner" type="button">Limpar</button></div>
+          </form>
+          <div><span class="preview-label">PRÉ-VISUALIZAÇÃO</span><div class="banner-preview" id="bannerPreview"><div><b id="previewTitle"></b><p id="previewSubtitle"></p></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIGURAÇÕES -->
+    <section id="settingsView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>LOJA</span><h2>Configurações da farmácia</h2></div></div>
+        <form id="settingsForm" class="settings-form" onsubmit="return false">
+          <div class="two-cols"><label>Nome da empresa<input id="infoName" maxlength="80" placeholder="Nome da farmácia"></label><label>Slogan / complemento<input id="infoSlogan" maxlength="80" placeholder="Ex.: 24 Horas"></label></div>
+          <label>Logo da empresa<input id="infoLogo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><small class="field-help">PNG, JPG, WEBP ou SVG. Recomendado: imagem quadrada e leve.</small></label>
+          <div class="brand-preview"><img id="infoLogoPreview" src="../assets/logo-natal-farma.png" alt="Prévia da logo"><div><b id="infoNamePreview">Natal Farma</b><small id="infoSloganPreview">24 Horas</small></div><button type="button" class="btn outline" id="clearLogo">Usar logo padrão</button></div>
+          <div class="two-cols"><label>WhatsApp com DDD<input id="infoWhatsapp" placeholder="84 99999-0000"></label><label>Instagram<input id="infoInstagram"></label></div>
+          <label>Endereço<textarea id="infoAddress" maxlength="200"></textarea></label>
+          <div class="two-cols"><label>Horário principal<input id="infoHoursWeek"></label><label>Domingos / feriados<input id="infoHoursSunday"></label></div>
+          <div class="two-cols"><label>Entrega grátis a partir de R$<input id="freeDeliveryMin" type="number" min="0" step="0.01"></label><label>Pontos por R$ 1 (futuro)<input id="loyaltyRate" type="number" min="0" step="0.1"></label></div>
+          <div class="two-cols"><label>Pontos para resgatar R$ 20<input id="redeemPoints" type="number" min="1"></label><label>Aviso no topo do site<input id="topNotice" maxlength="120"></label></div>
+          <div class="actions"><button class="primary">Salvar configurações</button></div>
+        </form>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><div><span>DEMONSTRAÇÃO</span><h2>Restaurar dados</h2><p>Apaga as alterações locais e restaura o catálogo, pedidos e usuários de demonstração.</p></div><button id="resetDemo" class="btn outline">Restaurar dados demo</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Produto -->
+<dialog id="productDialog">
+  <form id="productForm" class="modal-form" onsubmit="return false">
+    <button type="button" id="closeProduct" class="x">✕</button><span class="form-tag">PRODUTO</span><h2 id="formTitle">Novo produto</h2>
+    <input type="hidden" id="productId">
+    <div class="two-cols"><label>Nome<input id="pName" required maxlength="120"></label><label>Marca / laboratório<input id="pBrand" maxlength="80"></label></div>
+    <label>Categoria<select id="pCategory"></select></label>
+    <div class="two-cols"><label>Preço de venda<input id="pPrice" type="number" min="0" step="0.01" required></label><label>Preço promocional (opcional)<input id="pPromo" type="number" min="0" step="0.01"></label></div>
+    <div class="two-cols"><label>Custo<input id="pCost" type="number" min="0" step="0.01"></label><label>Estoque<input id="pStock" type="number" min="0" step="1" required></label></div>
+    <div class="two-cols"><label>Estoque mínimo<input id="pMinStock" type="number" min="0" step="1"></label><label>Validade<input id="pExpiry" type="date"></label></div>
+    <label>Descrição curta<textarea id="pDesc" maxlength="300"></textarea></label>
+    <label>Foto (arquivo)<input id="pImage" type="file" accept="image/*"></label>
+    <img id="productPreview" class="product-preview hidden">
+    <div class="two-cols"><label class="switchline"><input id="pActive" type="checkbox" checked> Produto visível</label><label class="switchline"><input id="pFeatured" type="checkbox"> Destaque na loja</label></div>
+    <button class="btn primary save">Salvar produto</button>
+  </form>
+</dialog>
+
+<!-- Pedido -->
+<dialog id="orderDialog" class="order-dialog">
+  <div class="order-modal">
+    <button type="button" id="closeOrder" class="x">✕</button><span class="form-tag">PEDIDO</span><h2 id="orderDialogTitle"></h2>
+    <div id="orderMeta" class="order-meta"></div>
+    <div class="order-columns">
+      <div><h3>Itens</h3><div id="orderItems" class="order-items"></div><div class="order-total"><span>Total</span><b id="orderTotal"></b></div></div>
+      <div class="order-controls">
+        <h3>Atendimento</h3>
+        <div class="order-paycard" id="paymentCard"></div>
+        <div class="btn-group" id="orderControlQuick"></div>
+        <label>Status<select id="editOrderStatus"><option>Pedido recebido</option><option>Aguardando pagamento</option><option>Pagamento confirmado</option><option>Em separação</option><option>Pronto</option><option>Saiu para entrega</option><option>Concluído</option><option>Cancelado</option></select></label>
+        <label>Status do pagamento<select id="editPaymentStatus"><option>Pendente</option><option>Pago</option><option>Não pago</option><option>Estornado</option></select></label>
+        <label>Forma confirmada<select id="editPaymentMethod"><option value="">Manter a solicitada</option><option>PIX</option><option>Dinheiro</option><option>Cartão de débito</option><option>Cartão de crédito</option></select></label>
+        <label id="cancelReasonWrap" class="hidden">Motivo do cancelamento<select id="editCancelReason"><option value="">Selecione</option><option>Cliente desistiu</option><option>Pagamento não realizado</option><option>Produto indisponível</option><option>Endereço fora da área</option><option>Pedido duplicado</option><option>Outro</option></select></label>
+        <button id="saveOrderChanges" class="btn primary">Salvar alterações</button>
+        <small class="hint">Ao concluir, o cliente ganha 1 ponto (automático, sem duplicidade). Ao cancelar, o estoque é devolvido.</small>
+      </div>
+    </div>
+    <div class="audit"><h3>Histórico de status</h3><div id="auditList" class="audit-list"></div></div>
+  </div>
+</dialog>
+
+<!-- Cupom -->
+<dialog id="couponDialog">
+  <form id="couponForm" class="modal-form" onsubmit="return false">
+    <button type="button" id="closeCoupon" class="x">✕</button><span class="form-tag">CUPOM</span><h2 id="couponFormTitle">Novo cupom</h2>
+    <input type="hidden" id="cId">
+    <div class="two-cols"><label>Código<input id="cCode" required maxlength="30" placeholder="FARMA10"></label><label>Tipo<select id="cType"><option value="percent">Percentual</option><option value="fixed">Valor fixo R$</option></select></label></div>
+    <div class="two-cols"><label>Valor<input id="cValue" type="number" min="0" step="0.01" required></label><label>Compra mínima R$<input id="cMin" type="number" min="0" step="0.01"></label></div>
+    <div class="two-cols"><label>Limite de usos (0 = ilimitado)<input id="cMax" type="number" min="0" step="1"></label><label>Uso por cliente (0 = ilimitado)<input id="cPerUser" type="number" min="0" step="1"></label></div>
+    <div class="two-cols"><label>Início<input id="cStarts" type="datetime-local"></label><label>Fim<input id="cEnds" type="datetime-local"></label></div>
+    <label class="switchline"><input id="cActive" type="checkbox" checked> Cupom ativo (aparece na Home com contagem regressiva)</label>
+    <button class="btn primary save">Salvar cupom</button>
+  </form>
+</dialog>
+
+<!-- Região -->
+<dialog id="zoneDialog">
+  <form id="zoneForm" class="modal-form" onsubmit="return false">
+    <button type="button" id="closeZone" class="x">✕</button><span class="form-tag">ENTREGA</span><h2>Nova região</h2>
+    <input type="hidden" id="zId"><label>Nome<input id="zName" required maxlength="80"></label><label>Taxa R$<input id="zFee" type="number" min="0" step="0.01" required></label>
+    <button class="btn primary save">Salvar região</button>
+  </form>
+</dialog>
+
+<!-- Confirmação -->
+<dialog id="confirmDialog" class="modal">
+  <div class="modal-form"><span class="form-tag">CONFIRMAÇÃO</span><h2 id="confirmTitle">Tem certeza?</h2><p id="confirmText" style="color:var(--text);font-size:13.5px"></p>
+    <div class="actions"><button id="confirmOk" class="btn primary">Confirmar</button><button id="confirmCancel" class="btn outline" type="button">Cancelar</button></div></div>
+</dialog>
+
+<script src="../data.js"></script>
+<script src="../supabase/config.js"></script>
+<script src="../vendor/supabase.js"></script>
+<script src="../supabase/client-v8.js"></script>
+<script src="../store.js"></script>
+<script src="../supabase/store-v8.js"></script>
+<script src="../security.js"></script>
+<script src="../branding.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

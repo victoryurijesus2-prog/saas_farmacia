@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel do Funcionário — Natal Farma V7</title>
+<meta name="theme-color" content="#E11D2E">
+<link rel="icon" href="../icons/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="funcionario.css">
+</head>
+<body>
+<div id="login" class="login">
+  <form class="login-card" id="loginForm" onsubmit="return false">
+    <div class="logo"><img src="../assets/logo-natal-farma.png" alt=""><div><b>Natal Farma</b><small>PAINEL DO FUNCIONÁRIO</small></div></div>
+    <h1>Área do funcionário</h1>
+    <p>Pedidos, pagamentos e estoque em um lugar rápido, pensado para o dia a dia da farmácia.</p>
+    <label>E-mail<input id="email" type="email" autocomplete="username" required placeholder="voce@email.com"></label>
+    <label>Senha<input id="password" type="password" autocomplete="current-password" required></label>
+    <p class="auth-error" id="loginError"></p>
+    <button id="loginSubmit">Entrar</button>
+    <div class="demo-creds"><b>Acesso da equipe</b>Use o usuário de funcionário cadastrado no Supabase.</div>
+    <small class="demo">Acesso restrito: o funcionário não altera configurações nem usuários.</small>
+  </form>
+</div>
+
+<div id="app" class="app hidden">
+  <aside>
+    <div class="logo"><img src="../assets/logo-natal-farma.png" alt=""><div><b>Natal Farma</b><small>EQUIPE V7</small></div></div>
+    <nav>
+      <button data-view="orders" data-ico="📦" class="active">Pedidos</button>
+      <button data-view="stock" data-ico="🏷️">Estoque</button>
+    </nav>
+    <a href="../index.html">← Abrir loja</a>
+    <button id="logout">Sair</button>
+  </aside>
+
+  <main>
+    <header><div><small>Painel do funcionário</small><h1 id="pageTitle">Pedidos</h1></div><span class="online" id="userChip">●</span></header>
+
+    <section id="ordersView" class="view">
+      <div class="stats">
+        <article><span>Pedidos novos</span><strong id="fNew">0</strong><small>aguardando atendimento</small></article>
+        <article><span>Em andamento</span><strong id="fProgress">0</strong><small>separação / entrega</small></article>
+        <article><span>Concluídos hoje</span><strong id="fDone">0</strong><small>pontos atribuídos</small></article>
+        <article><span>Cancelados</span><strong id="fCancelled">0</strong><small>estoque devolvido</small></article>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><div><span>FILA DE ATENDIMENTO</span><h2>Pedidos recebidos</h2><p>Cada pedido mostra cliente, telefone, itens, valor, forma de pagamento e endereço. Avance o status com um clique.</p></div>
+          <div class="filters"><input id="fSearch" placeholder="Buscar pedido ou cliente"><select id="fFilter"><option value="all">Todos</option><option>Pedido recebido</option><option>Aguardando pagamento</option><option>Pagamento confirmado</option><option>Em separação</option><option>Pronto</option><option>Saiu para entrega</option><option>Concluído</option><option>Cancelado</option></select></div>
+        </div>
+        <div id="fQueue" class="queue"></div>
+      </div>
+    </section>
+
+    <section id="stockView" class="view hidden">
+      <div class="panel">
+        <div class="panel-title"><div><span>ESTOQUE</span><h2>Atualização rápida</h2><p>Corrija quantidades e disponibilidade. Produtos, preços e exclusão são exclusivos do administrador.</p></div></div>
+        <div class="product-toolbar"><input id="sSearch" placeholder="Buscar produto"><select id="sFilter"><option value="all">Todos</option><option value="low">Estoque baixo</option><option value="out">Sem estoque</option></select></div>
+        <div class="table-wrap"><table><thead><tr><th>Produto</th><th>Estoque</th><th>Mínimo</th><th>Ajuste rápido</th><th>Disponibilidade</th></tr></thead><tbody id="stockRows"></tbody></table></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Detalhe do pedido -->
+<dialog id="fOrderDialog" class="order-dialog">
+  <div class="order-modal">
+    <button type="button" id="fCloseOrder" class="x">✕</button><span class="form-tag">PEDIDO</span><h2 id="fOrderTitle"></h2>
+    <div id="fOrderMeta" class="order-meta"></div>
+    <div class="order-columns">
+      <div><h3>Itens</h3><div id="fOrderItems" class="order-items"></div><div class="order-total"><span>Total</span><b id="fOrderTotal"></b></div></div>
+      <div class="order-controls">
+        <h3>Atendimento</h3>
+        <div class="order-paycard" id="fPaymentCard"></div>
+        <div class="btn-group">
+          <button class="btn primary" id="fNext"></button>
+          <button class="btn outline" id="fConfirmPay">Confirmar pagamento</button>
+          <button class="btn outline danger-soft" id="fCancel">Cancelar pedido</button>
+        </div>
+        <label id="fPayWrap" class="hidden">Forma confirmada pelo cliente<select id="fPayMethod"><option>PIX</option><option>Dinheiro</option><option>Cartão de débito</option><option>Cartão de crédito</option></select><button class="btn primary full" id="fPaySave" style="margin-top:8px">Confirmar pagamento</button></label>
+        <label id="fCancelWrap" class="hidden">Motivo<select id="fCancelReason"><option value="">Selecione um motivo</option><option>Cliente desistiu</option><option>Pagamento não realizado</option><option>Produto indisponível</option><option>Endereço fora da área</option><option>Pedido duplicado</option><option>Outro</option></select><button class="btn primary full danger-soft" id="fCancelSave" style="margin-top:8px">Confirmar cancelamento</button></label>
+        <small class="hint">Concluir pedido → cliente ganha 1 ponto automaticamente. Cancelar → estoque é devolvido.</small>
+      </div>
+    </div>
+    <div class="audit"><h3>Histórico</h3><div id="fAudit" class="audit-list"></div></div>
+  </div>
+</dialog>
+
+<dialog id="toastless" style="display:none"></dialog>
+<script src="../data.js"></script>
+<script src="../supabase/config.js"></script>
+<script src="../vendor/supabase.js"></script>
+<script src="../supabase/client-v8.js"></script>
+<script src="../store.js"></script>
+<script src="../supabase/store-v8.js"></script>
+<script src="../security.js"></script>
+<script src="../branding.js"></script>
+<script src="funcionario.js"></script>
+</body>
+</html>
